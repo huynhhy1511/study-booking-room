@@ -11,7 +11,7 @@
   - **Huỳnh Ngọc Huy** — Student ID: **23IT.EB043** 
 * **🔗 Live Demo URL:** [http://localhost:8081](http://localhost:8081) (Expo Web Platform) / Expo Go (Android Emulator & Physical Device)
 * **💻 GitHub Repository:**https://github.com/huynhhy1511/study-booking-room
-* **🎥 Video Demo (Optional):** [N/A]
+* **🎥 Video Demo (Optional):**
 
 ---
 
@@ -80,7 +80,7 @@ miniproject2/
 
 ## 4. EMPIRICAL EVIDENCE & SCREENSHOTS
 
-The following screenshots demonstrate the main application features:
+
 
 Home Screen – Room list, search, and filters.
 Room Detail – Room information, 7-day selector, and available/booked time slots.
