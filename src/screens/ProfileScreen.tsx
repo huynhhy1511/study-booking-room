@@ -7,21 +7,22 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useBookingStore } from '../store/useBookingStore';
+import { DesktopHeader } from '../components/DesktopHeader';
 import { colors, borderRadius, typography, spacing, shadows } from '../theme';
 
 export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 768;
   const user = useBookingStore((state) => state.user);
 
   const handleNotifications = () => {
-    Alert.alert(
-      'Notifications Settings',
-      'Reminder alerts are automatically scheduled 15 minutes before your booked slot starts via expo-notifications.'
-    );
+    navigation.navigate('NotificationsTab');
   };
 
   const handleBookingHistory = () => {
@@ -61,89 +62,93 @@ export const ProfileScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      {isDesktop && <DesktopHeader />}
+
       <ScrollView contentContainerStyle={styles.scrollBody} showsVerticalScrollIndicator={false}>
-        {/* Screen Title */}
-        <View style={styles.titleRow}>
-          <Text style={styles.screenTitle}>Profile</Text>
-        </View>
-
-        {/* User Card */}
-        <View style={styles.userCard}>
-          <View style={styles.avatarCircle}>
-            <Ionicons name="person" size={36} color={colors.primary} />
+        <View style={isDesktop ? styles.desktopWrapper : styles.mobileWrapper}>
+          {/* Screen Title */}
+          <View style={styles.titleRow}>
+            <Text style={styles.screenTitle}>Profile</Text>
           </View>
-          <Text style={styles.userName}>{user.name}</Text>
-          <Text style={styles.userSubtitle}>
-            {user.studentId} • VKU Student
-          </Text>
-          <Text style={styles.departmentText}>{user.department}</Text>
+
+          {/* User Card */}
+          <View style={styles.userCard}>
+            <View style={styles.avatarCircle}>
+              <Ionicons name="person" size={36} color={colors.primary} />
+            </View>
+            <Text style={styles.userName}>{user.name}</Text>
+            <Text style={styles.userSubtitle}>
+              {user.studentId} • VKU Student
+            </Text>
+            <Text style={styles.departmentText}>{user.department}</Text>
+          </View>
+
+          {/* Menu Items */}
+          <View style={styles.menuContainer}>
+            <TouchableOpacity
+              style={styles.menuRow}
+              onPress={handleNotifications}
+              activeOpacity={0.7}
+            >
+              <View style={styles.menuIconWrapper}>
+                <Ionicons name="notifications-outline" size={20} color={colors.primary} />
+              </View>
+              <Text style={styles.menuTitle}>Notifications</Text>
+              <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+            </TouchableOpacity>
+
+            <View style={styles.divider} />
+
+            <TouchableOpacity
+              style={styles.menuRow}
+              onPress={handleBookingHistory}
+              activeOpacity={0.7}
+            >
+              <View style={styles.menuIconWrapper}>
+                <Ionicons name="time-outline" size={20} color={colors.primary} />
+              </View>
+              <Text style={styles.menuTitle}>Booking history</Text>
+              <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+            </TouchableOpacity>
+
+            <View style={styles.divider} />
+
+            <TouchableOpacity
+              style={styles.menuRow}
+              onPress={handleHelp}
+              activeOpacity={0.7}
+            >
+              <View style={styles.menuIconWrapper}>
+                <Ionicons name="help-circle-outline" size={20} color={colors.primary} />
+              </View>
+              <Text style={styles.menuTitle}>Help & Support</Text>
+              <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+            </TouchableOpacity>
+
+            <View style={styles.divider} />
+
+            <TouchableOpacity
+              style={styles.menuRow}
+              onPress={handleAbout}
+              activeOpacity={0.7}
+            >
+              <View style={styles.menuIconWrapper}>
+                <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
+              </View>
+              <Text style={styles.menuTitle}>About</Text>
+              <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Logout Button */}
+          <TouchableOpacity
+            style={styles.logoutBtn}
+            onPress={handleLogout}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.logoutBtnText}>Log out</Text>
+          </TouchableOpacity>
         </View>
-
-        {/* Menu Items */}
-        <View style={styles.menuContainer}>
-          <TouchableOpacity
-            style={styles.menuRow}
-            onPress={handleNotifications}
-            activeOpacity={0.7}
-          >
-            <View style={styles.menuIconWrapper}>
-              <Ionicons name="notifications-outline" size={20} color={colors.primary} />
-            </View>
-            <Text style={styles.menuTitle}>Notifications</Text>
-            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-          </TouchableOpacity>
-
-          <View style={styles.divider} />
-
-          <TouchableOpacity
-            style={styles.menuRow}
-            onPress={handleBookingHistory}
-            activeOpacity={0.7}
-          >
-            <View style={styles.menuIconWrapper}>
-              <Ionicons name="time-outline" size={20} color={colors.primary} />
-            </View>
-            <Text style={styles.menuTitle}>Booking history</Text>
-            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-          </TouchableOpacity>
-
-          <View style={styles.divider} />
-
-          <TouchableOpacity
-            style={styles.menuRow}
-            onPress={handleHelp}
-            activeOpacity={0.7}
-          >
-            <View style={styles.menuIconWrapper}>
-              <Ionicons name="help-circle-outline" size={20} color={colors.primary} />
-            </View>
-            <Text style={styles.menuTitle}>Help & Support</Text>
-            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-          </TouchableOpacity>
-
-          <View style={styles.divider} />
-
-          <TouchableOpacity
-            style={styles.menuRow}
-            onPress={handleAbout}
-            activeOpacity={0.7}
-          >
-            <View style={styles.menuIconWrapper}>
-              <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
-            </View>
-            <Text style={styles.menuTitle}>About</Text>
-            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Logout Button */}
-        <TouchableOpacity
-          style={styles.logoutBtn}
-          onPress={handleLogout}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.logoutBtnText}>Log out</Text>
-        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -152,11 +157,20 @@ export const ProfileScreen: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#F8FAFC',
   },
   scrollBody: {
     padding: spacing.lg,
     paddingBottom: spacing.xxl,
+  },
+  mobileWrapper: {
+    width: '100%',
+  },
+  desktopWrapper: {
+    maxWidth: 600,
+    width: '100%',
+    alignSelf: 'center',
+    paddingTop: spacing.md,
   },
   titleRow: {
     marginBottom: spacing.md,
@@ -164,7 +178,7 @@ const styles = StyleSheet.create({
   screenTitle: {
     fontSize: typography.sizes.screenTitle,
     fontWeight: typography.weights.bold,
-    color: colors.text,
+    color: colors.navy,
   },
   userCard: {
     backgroundColor: colors.card,
@@ -172,7 +186,7 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#E2E8F0',
     marginBottom: spacing.xl,
     ...shadows.card,
   },
@@ -188,7 +202,7 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: typography.sizes.title,
     fontWeight: typography.weights.bold,
-    color: colors.text,
+    color: colors.navy,
     marginBottom: 4,
   },
   userSubtitle: {
@@ -206,7 +220,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: borderRadius.card,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#E2E8F0',
     paddingVertical: spacing.xs,
     marginBottom: spacing.xl,
     ...shadows.card,
@@ -215,7 +229,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
-    minHeight: 52, // 52px touch target
+    minHeight: 52,
   },
   menuIconWrapper: {
     width: 36,
@@ -234,11 +248,11 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: colors.border,
+    backgroundColor: '#E2E8F0',
     marginHorizontal: spacing.md,
   },
   logoutBtn: {
-    minHeight: 48,
+    minHeight: 50,
     borderRadius: borderRadius.button,
     borderWidth: 1,
     borderColor: colors.dangerBorder,

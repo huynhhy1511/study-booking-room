@@ -5,59 +5,66 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  TouchableOpacity,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useBookingStore } from '../store/useBookingStore';
 import { formatDateDisplay } from '../utils/dateTime';
 import { EmptyState } from '../components/EmptyState';
+import { DesktopHeader } from '../components/DesktopHeader';
 import { colors, borderRadius, typography, spacing, shadows } from '../theme';
 
 export const NotificationsScreen: React.FC = () => {
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 768;
   const reservations = useBookingStore((state) => state.reservations);
   const activeBookings = reservations.filter((b) => b.status === 'confirmed');
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <Text style={styles.screenTitle}>Notifications</Text>
-        <Text style={styles.screenSubtitle}>
-          Check-in reminders & campus study alerts
-        </Text>
-      </View>
+      {isDesktop && <DesktopHeader />}
 
-      <ScrollView contentContainerStyle={styles.scrollBody} showsVerticalScrollIndicator={false}>
-        {activeBookings.length === 0 ? (
-          <EmptyState
-            icon="notifications-outline"
-            title="No new notifications"
-            description="When you reserve a study room, reminder notifications will appear here 15 minutes before your time slot."
-          />
-        ) : (
-          activeBookings.map((b) => (
-            <View key={b.id} style={styles.notificationCard}>
-              <View style={styles.iconCircle}>
-                <Ionicons name="notifications" size={20} color={colors.primary} />
-              </View>
+      <View style={styles.responsiveWrapper}>
+        <View style={styles.header}>
+          <Text style={styles.screenTitle}>Notifications</Text>
+          <Text style={styles.screenSubtitle}>
+            Check-in reminders & campus study alerts
+          </Text>
+        </View>
 
-              <View style={styles.cardContent}>
-                <View style={styles.titleRow}>
-                  <Text style={styles.notifTitle}>Upcoming Check-in Reminder</Text>
-                  <View style={styles.unreadDot} />
+        <ScrollView contentContainerStyle={styles.scrollBody} showsVerticalScrollIndicator={false}>
+          {activeBookings.length === 0 ? (
+            <EmptyState
+              icon="notifications-outline"
+              title="No new notifications"
+              description="When you reserve a study room, reminder notifications will appear here 15 minutes before your time slot."
+            />
+          ) : (
+            activeBookings.map((b) => (
+              <View key={b.id} style={styles.notificationCard}>
+                <View style={styles.iconCircle}>
+                  <Ionicons name="notifications" size={20} color={colors.primary} />
                 </View>
 
-                <Text style={styles.notifBody}>
-                  Room {b.roomCode} ({b.roomName}) is scheduled for {b.slotLabel} on {formatDateDisplay(b.date)}.
-                </Text>
+                <View style={styles.cardContent}>
+                  <View style={styles.titleRow}>
+                    <Text style={styles.notifTitle}>Upcoming Check-in Reminder</Text>
+                    <View style={styles.unreadDot} />
+                  </View>
 
-                <Text style={styles.notifFooter}>
-                  Ticket: {b.id} • Reminder set 15m before start
-                </Text>
+                  <Text style={styles.notifBody}>
+                    Room {b.roomCode} ({b.roomName}) is scheduled for {b.slotLabel} on {formatDateDisplay(b.date)}.
+                  </Text>
+
+                  <Text style={styles.notifFooter}>
+                    Ticket: {b.id} • Reminder set 15m before start
+                  </Text>
+                </View>
               </View>
-            </View>
-          ))
-        )}
-      </ScrollView>
+            ))
+          )}
+        </ScrollView>
+      </View>
     </SafeAreaView>
   );
 };
@@ -66,6 +73,12 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#F8FAFC',
+  },
+  responsiveWrapper: {
+    flex: 1,
+    maxWidth: 720,
+    width: '100%',
+    alignSelf: 'center',
   },
   header: {
     paddingHorizontal: spacing.lg,

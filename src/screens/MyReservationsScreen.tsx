@@ -7,6 +7,7 @@ import {
   StyleSheet,
   SafeAreaView,
   Alert,
+  useWindowDimensions,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,11 +15,15 @@ import { useBookingStore } from '../store/useBookingStore';
 import { Booking } from '../types';
 import { formatDateDisplay } from '../utils/dateTime';
 import { QRPassModal } from '../components/QRPassModal';
+import { DesktopHeader } from '../components/DesktopHeader';
 import { EmptyState } from '../components/EmptyState';
 import { colors, borderRadius, typography, spacing, shadows } from '../theme';
 
 export const MyReservationsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 768;
+  const numColumns = width >= 768 ? 2 : 1;
 
   const reservations = useBookingStore((state) => state.reservations);
   const cancelBooking = useBookingStore((state) => state.cancelBooking);
@@ -58,12 +63,12 @@ export const MyReservationsScreen: React.FC = () => {
     const isConfirmed = item.status === 'confirmed';
 
     return (
-      <View style={styles.bookingCard}>
+      <View style={[styles.bookingCard, numColumns > 1 && styles.bookingCardGrid]}>
         {/* Room & Building */}
         <Text style={styles.roomCode}>{item.roomCode}</Text>
         <Text style={styles.roomName}>{item.roomName}</Text>
         <Text style={styles.location}>
-          Building {item.building} • Floor {item.floor}
+          Building {item.building} • Floor {item.floor} (VKU)
         </Text>
 
         <View style={styles.divider} />
@@ -119,75 +124,89 @@ export const MyReservationsScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Title */}
-      <View style={styles.topHeader}>
-        <Text style={styles.screenTitle}>My Bookings</Text>
-      </View>
+      {/* Desktop Header for Web */}
+      {isDesktop && <DesktopHeader />}
 
-      {/* Segmented Control Tabs */}
-      <View style={styles.tabBar}>
-        <TouchableOpacity
-          style={[styles.tabItem, activeTab === 'upcoming' && styles.tabItemActive]}
-          onPress={() => setActiveTab('upcoming')}
-          activeOpacity={0.7}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === 'upcoming' && styles.tabTextActive,
-            ]}
-          >
-            Upcoming (
-            {reservations.filter((b) => b.status === 'confirmed').length})
+      <View style={styles.responsiveWrapper}>
+        {/* Title */}
+        <View style={styles.topHeader}>
+          <Text style={styles.screenTitle}>My Bookings</Text>
+          <Text style={styles.screenSubtitle}>
+            Manage your study room reservations & access your QR check-in passes
           </Text>
-        </TouchableOpacity>
+        </View>
 
-        <TouchableOpacity
-          style={[styles.tabItem, activeTab === 'past' && styles.tabItemActive]}
-          onPress={() => setActiveTab('past')}
-          activeOpacity={0.7}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === 'past' && styles.tabTextActive,
-            ]}
+        {/* Segmented Control Tabs */}
+        <View style={styles.tabBar}>
+          <TouchableOpacity
+            style={[styles.tabItem, activeTab === 'upcoming' && styles.tabItemActive]}
+            onPress={() => setActiveTab('upcoming')}
+            activeOpacity={0.7}
           >
-            Past (
-            {reservations.filter((b) => b.status === 'cancelled').length})
-          </Text>
-        </TouchableOpacity>
-      </View>
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === 'upcoming' && styles.tabTextActive,
+              ]}
+            >
+              Upcoming (
+              {reservations.filter((b) => b.status === 'confirmed').length})
+            </Text>
+          </TouchableOpacity>
 
-      {/* List */}
-      <FlatList
-        data={displayedReservations}
-        keyExtractor={(item) => item.id}
-        renderItem={renderBookingItem}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <EmptyState
-            icon={activeTab === 'upcoming' ? 'calendar-outline' : 'archive-outline'}
-            title={
-              activeTab === 'upcoming'
-                ? 'No upcoming reservations'
-                : 'No past booking history'
-            }
-            description={
-              activeTab === 'upcoming'
-                ? 'Find a study room on the Home tab to schedule your next session.'
-                : 'Your cancelled or past reservations will appear here.'
-            }
-            actionText={activeTab === 'upcoming' ? 'Explore Rooms' : undefined}
-            onAction={
-              activeTab === 'upcoming'
-                ? () => navigation.navigate('HomeTab')
-                : undefined
-            }
-          />
-        }
-      />
+          <TouchableOpacity
+            style={[styles.tabItem, activeTab === 'past' && styles.tabItemActive]}
+            onPress={() => setActiveTab('past')}
+            activeOpacity={0.7}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === 'past' && styles.tabTextActive,
+              ]}
+            >
+              Past (
+              {reservations.filter((b) => b.status === 'cancelled').length})
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* List */}
+        <FlatList
+          key={numColumns}
+          numColumns={numColumns}
+          columnWrapperStyle={numColumns > 1 ? styles.columnWrapper : undefined}
+          data={displayedReservations}
+          keyExtractor={(item) => item.id}
+          renderItem={renderBookingItem}
+          contentContainerStyle={[
+            styles.listContent,
+            isDesktop && { paddingBottom: 60 },
+          ]}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <EmptyState
+              icon={activeTab === 'upcoming' ? 'calendar-outline' : 'archive-outline'}
+              title={
+                activeTab === 'upcoming'
+                  ? 'No upcoming reservations'
+                  : 'No past booking history'
+              }
+              description={
+                activeTab === 'upcoming'
+                  ? 'Find a study room on the Home tab to schedule your next session.'
+                  : 'Your cancelled or past reservations will appear here.'
+              }
+              actionText={activeTab === 'upcoming' ? 'Explore Rooms' : undefined}
+              onAction={
+                activeTab === 'upcoming'
+                  ? () => navigation.navigate('HomeTab')
+                  : undefined
+              }
+            />
+          }
+        />
+      </View>
 
       {/* QR Pass Modal */}
       <QRPassModal
@@ -202,7 +221,13 @@ export const MyReservationsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#F8FAFC',
+  },
+  responsiveWrapper: {
+    flex: 1,
+    maxWidth: 1200,
+    width: '100%',
+    alignSelf: 'center',
   },
   topHeader: {
     paddingHorizontal: spacing.lg,
@@ -213,14 +238,19 @@ const styles = StyleSheet.create({
   screenTitle: {
     fontSize: typography.sizes.screenTitle,
     fontWeight: typography.weights.bold,
-    color: colors.text,
+    color: colors.navy,
+  },
+  screenSubtitle: {
+    fontSize: typography.sizes.caption,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
   tabBar: {
     flexDirection: 'row',
     backgroundColor: colors.card,
     paddingHorizontal: spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: '#E2E8F0',
   },
   tabItem: {
     flex: 1,
@@ -246,19 +276,25 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: spacing.xxl,
   },
+  columnWrapper: {
+    gap: 16,
+  },
   bookingCard: {
     backgroundColor: colors.card,
     borderRadius: borderRadius.card,
     padding: spacing.lg,
     marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#E2E8F0',
     ...shadows.card,
+  },
+  bookingCardGrid: {
+    flex: 1,
   },
   roomCode: {
     fontSize: typography.sizes.title,
     fontWeight: typography.weights.bold,
-    color: colors.text,
+    color: colors.navy,
   },
   roomName: {
     fontSize: typography.sizes.bodySm,
@@ -272,7 +308,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: colors.border,
+    backgroundColor: '#E2E8F0',
     marginVertical: spacing.md,
   },
   timeBlock: {
@@ -346,7 +382,7 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingTop: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopColor: '#E2E8F0',
   },
   qrBtn: {
     minHeight: 44,

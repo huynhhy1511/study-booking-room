@@ -15,16 +15,17 @@ interface RoomCardProps {
   room: Room;
   status: RealtimeRoomStatus;
   onPress: (room: Room) => void;
+  isGrid?: boolean;
 }
 
-const RoomCardComponent: React.FC<RoomCardProps> = ({ room, status, onPress }) => {
+const RoomCardComponent: React.FC<RoomCardProps> = ({ room, status, onPress, isGrid }) => {
   const [isFavorite, setIsFavorite] = useState(false);
   const isAvailable = status === 'Available Now';
 
   return (
     <TouchableOpacity
       activeOpacity={0.92}
-      style={styles.card}
+      style={[styles.card, isGrid && styles.cardGrid]}
       onPress={() => onPress(room)}
     >
       {/* 1. Room Image with Favorite Heart Icon */}
@@ -116,6 +117,10 @@ const styles = StyleSheet.create({
     borderColor: '#E9EEF5',
     overflow: 'hidden',
     ...shadows.card,
+  },
+  cardGrid: {
+    marginHorizontal: 0,
+    flex: 1,
   },
   imageContainer: {
     width: '100%',

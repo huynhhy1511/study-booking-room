@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Platform, StyleSheet } from 'react-native';
+import { View, Platform, StyleSheet, useWindowDimensions } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -34,25 +34,30 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 const MainTabNavigator = () => {
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 768;
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: '#FFFFFF',
         tabBarInactiveTintColor: '#8E9EB5',
-        tabBarStyle: {
-          backgroundColor: colors.navy, // Dark Navy bottom bar as in mockup
-          borderTopWidth: 0,
-          height: Platform.OS === 'ios' ? 84 : 68,
-          paddingBottom: Platform.OS === 'ios' ? 24 : 10,
-          paddingTop: 8,
-          borderTopLeftRadius: 20,
-          borderTopRightRadius: 20,
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-        },
+        tabBarStyle: isDesktop
+          ? { display: 'none' }
+          : {
+              backgroundColor: colors.navy, // Dark Navy bottom bar as in mockup
+              borderTopWidth: 0,
+              height: Platform.OS === 'ios' ? 84 : 68,
+              paddingBottom: Platform.OS === 'ios' ? 24 : 10,
+              paddingTop: 8,
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+            },
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '500',

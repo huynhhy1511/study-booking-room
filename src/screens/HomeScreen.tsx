@@ -9,6 +9,7 @@ import {
   StyleSheet,
   StatusBar,
   SafeAreaView,
+  useWindowDimensions,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +17,7 @@ import { useBookingStore } from '../store/useBookingStore';
 import { Room } from '../types';
 import { RoomCard } from '../components/RoomCard';
 import { BrandLogo } from '../components/BrandLogo';
+import { DesktopHeader } from '../components/DesktopHeader';
 import { FilterBottomSheet } from '../components/FilterBottomSheet';
 import { EmptyState } from '../components/EmptyState';
 import { getRoomRealtimeStatus } from '../utils/conflict';
@@ -24,6 +26,9 @@ import { colors, typography, spacing, borderRadius, shadows } from '../theme';
 
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 768;
+  const numColumns = width >= 1080 ? 3 : width >= 680 ? 2 : 1;
 
   const rooms = useBookingStore((state) => state.rooms);
   const reservations = useBookingStore((state) => state.reservations);
@@ -86,10 +91,11 @@ export const HomeScreen: React.FC = () => {
           room={item}
           status={status}
           onPress={handleRoomPress}
+          isGrid={numColumns > 1}
         />
       );
     },
-    [reservations, handleRoomPress]
+    [reservations, handleRoomPress, numColumns]
   );
 
   const keyExtractor = useCallback((item: Room) => item.id, []);
@@ -98,28 +104,30 @@ export const HomeScreen: React.FC = () => {
   const ListHeader = useMemo(
     () => (
       <View style={styles.headerContainer}>
-        {/* Top Bar: Title & User ID + Mascot Logo */}
-        <View style={styles.topBar}>
-          <View>
-            <Text style={styles.appTitle}>VKU Study Room</Text>
-            <TouchableOpacity
-              style={styles.userRow}
-              onPress={() => setShowId(!showId)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.userSubtitle}>
-                Hi, {user.name ? user.name.split(' ').slice(-1)[0] : 'Daffa'}! - {showId ? user.studentId : '••••••••'}
-              </Text>
-              <Ionicons
-                name={showId ? 'eye-outline' : 'eye-off-outline'}
-                size={14}
-                color={colors.textSecondary}
-              />
-            </TouchableOpacity>
-          </View>
+        {/* Top Mobile Bar (ẩn trên desktop vì đã có DesktopHeader) */}
+        {!isDesktop && (
+          <View style={styles.topBar}>
+            <View>
+              <Text style={styles.appTitle}>VKU Study Room</Text>
+              <TouchableOpacity
+                style={styles.userRow}
+                onPress={() => setShowId(!showId)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.userSubtitle}>
+                  Hi, {user.name ? user.name.split(' ').slice(-1)[0] : 'Daffa'}! - {showId ? user.studentId : '••••••••'}
+                </Text>
+                <Ionicons
+                  name={showId ? 'eye-outline' : 'eye-off-outline'}
+                  size={14}
+                  color={colors.textSecondary}
+                />
+              </TouchableOpacity>
+            </View>
 
-          <BrandLogo size={42} />
-        </View>
+            <BrandLogo size={42} />
+          </View>
+        )}
 
         {/* Search Bar + Dark Navy Filter Button */}
         <View style={styles.searchRow}>
@@ -192,34 +200,44 @@ export const HomeScreen: React.FC = () => {
         </View>
       </View>
     ),
-    [user.name, user.studentId, showId, filters.searchQuery, filters.building, filteredRooms.length, setSearchQuery, setBuildingFilter]
+    [isDesktop, user.name, user.studentId, showId, filters.searchQuery, filters.building, filteredRooms.length, setSearchQuery, setBuildingFilter]
   );
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
-      <FlatList
-        data={filteredRooms}
-        keyExtractor={keyExtractor}
-        renderItem={renderItem}
-        ListHeaderComponent={ListHeader}
-        ListEmptyComponent={
-          <EmptyState
-            icon="search-outline"
-            title="No matching rooms found"
-            description="Try adjusting your search keyword or clearing the filters."
-            actionText="Reset filters"
-            onAction={resetFilters}
-          />
-        }
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        // Tối ưu FlatList 60fps
-        initialNumToRender={5}
-        maxToRenderPerBatch={6}
-        windowSize={5}
-        removeClippedSubviews={true}
-      />
+      {/* Desktop Header Navbar for Web */}
+      <DesktopHeader />
+
+      <View style={styles.responsiveWrapper}>
+        <FlatList
+          key={numColumns} // Re-mount cleanly when window width switches column layout
+          numColumns={numColumns}
+          columnWrapperStyle={numColumns > 1 ? styles.columnWrapper : undefined}
+          data={filteredRooms}
+          keyExtractor={keyExtractor}
+          renderItem={renderItem}
+          ListHeaderComponent={ListHeader}
+          ListEmptyComponent={
+            <EmptyState
+              icon="search-outline"
+              title="No matching rooms found"
+              description="Try adjusting your search keyword or clearing the filters."
+              actionText="Reset filters"
+              onAction={resetFilters}
+            />
+          }
+          contentContainerStyle={[
+            styles.listContent,
+            isDesktop && { paddingBottom: 60 },
+          ]}
+          showsVerticalScrollIndicator={false}
+          initialNumToRender={6}
+          maxToRenderPerBatch={8}
+          windowSize={5}
+          removeClippedSubviews={true}
+        />
+      </View>
 
       {/* Professional Filter Bottom Sheet */}
       <FilterBottomSheet
@@ -248,8 +266,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8FAFC',
   },
+  responsiveWrapper: {
+    flex: 1,
+    maxWidth: 1200,
+    width: '100%',
+    alignSelf: 'center',
+  },
   listContent: {
     paddingBottom: spacing.xxl,
+  },
+  columnWrapper: {
+    gap: 16,
+    paddingHorizontal: spacing.lg,
   },
   headerContainer: {
     paddingHorizontal: spacing.lg,

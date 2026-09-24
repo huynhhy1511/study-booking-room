@@ -9,11 +9,13 @@ import {
   SafeAreaView,
   Alert,
   Share,
+  useWindowDimensions,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useBookingStore } from '../store/useBookingStore';
 import { DateSlotSelector } from '../components/DateSlotSelector';
+import { DesktopHeader } from '../components/DesktopHeader';
 import { getRoomRealtimeStatus } from '../utils/conflict';
 import { TIME_SLOTS } from '../constants';
 import { colors, borderRadius, typography, spacing, shadows } from '../theme';
@@ -22,6 +24,8 @@ export const RoomDetailScreen: React.FC = () => {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { roomId } = route.params;
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 900;
 
   const rooms = useBookingStore((state) => state.rooms);
   const reservations = useBookingStore((state) => state.reservations);
@@ -32,7 +36,6 @@ export const RoomDetailScreen: React.FC = () => {
   const isSlotUnavailable = useBookingStore((state) => state.isSlotUnavailable);
 
   const [isFavorite, setIsFavorite] = useState(false);
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   const room = rooms.find((r) => r.id === roomId);
 
@@ -92,7 +95,6 @@ export const RoomDetailScreen: React.FC = () => {
     });
   };
 
-  // Facilities data mapping
   const facilities = [
     { id: 'wifi', name: 'Wifi', icon: 'wifi-outline', qty: null },
     { id: 'whiteboard', name: 'Whiteboard', icon: 'easel-outline', qty: 'x2' },
@@ -103,163 +105,217 @@ export const RoomDetailScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* 1. Top Navigation Bar with Back, Heart, Share */}
-      <View style={styles.navBar}>
-        <TouchableOpacity
-          style={styles.navIconBtn}
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="arrow-back" size={22} color={colors.navy} />
-        </TouchableOpacity>
+      {/* Desktop Header on wide screens */}
+      {isDesktop && <DesktopHeader />}
 
-        <View style={styles.navRightActions}>
+      {/* Top Nav Bar for Mobile / Back Button */}
+      <View style={styles.navBarWrapper}>
+        <View style={styles.navBar}>
           <TouchableOpacity
             style={styles.navIconBtn}
-            onPress={() => setIsFavorite(!isFavorite)}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            onPress={() => navigation.goBack()}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons
-              name={isFavorite ? 'heart' : 'heart-outline'}
-              size={22}
-              color={isFavorite ? colors.danger : colors.navy}
-            />
+            <Ionicons name="arrow-back" size={22} color={colors.navy} />
+            {isDesktop && <Text style={styles.backLabel}>Back to Rooms</Text>}
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.navIconBtn}
-            onPress={handleShare}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons name="share-social-outline" size={22} color={colors.navy} />
-          </TouchableOpacity>
+          <View style={styles.navRightActions}>
+            <TouchableOpacity
+              style={styles.navIconBtn}
+              onPress={() => setIsFavorite(!isFavorite)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons
+                name={isFavorite ? 'heart' : 'heart-outline'}
+                size={22}
+                color={isFavorite ? colors.danger : colors.navy}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.navIconBtn}
+              onPress={handleShare}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="share-social-outline" size={22} color={colors.navy} />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          isDesktop && styles.scrollContentDesktop,
+        ]}
       >
-        {/* 2. Room Title & Host Info Row */}
-        <View style={styles.titleSection}>
-          <View style={styles.titleInfo}>
-            <Text style={styles.roomTitle}>
-              Study Room {room.code.replace('.', ' ')}
-            </Text>
-            <View style={styles.metaRow}>
-              <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
-              <Text style={styles.metaText}>
-                Tòa nhà {room.building} • Tầng {room.floor} (VKU)
-              </Text>
-            </View>
-            <View style={styles.metaRow}>
-              <Ionicons name="people-outline" size={14} color={colors.textSecondary} />
-              <Text style={styles.metaText}>{room.capacity} People</Text>
-            </View>
-          </View>
-
-          {/* Supervisor / Host Avatar */}
-          <View style={styles.hostAvatarWrapper}>
-            <Image
-              source={{ uri: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80' }}
-              style={styles.hostAvatar}
-            />
-          </View>
-        </View>
-
-        {/* 3. Hero Image with 1/3 page badge and dot indicators */}
-        <View style={styles.carouselContainer}>
-          <Image
-            source={{ uri: room.imageUrl }}
-            style={styles.carouselImage}
-            resizeMode="cover"
-          />
-          {/* Page Badge: 1/3 */}
-          <View style={styles.pageBadge}>
-            <Text style={styles.pageBadgeText}>1/3</Text>
-          </View>
-
-          {/* Pagination Dots */}
-          <View style={styles.dotsRow}>
-            <View style={[styles.dot, styles.dotActive]} />
-            <View style={styles.dot} />
-            <View style={styles.dot} />
-          </View>
-        </View>
-
-        {/* 4. Status & Opening Hours Row */}
-        <View style={styles.statusHoursRow}>
-          <View style={styles.statusPillWrapper}>
-            {isAvailable ? (
-              <>
-                <View style={styles.statusDotGreen} />
-                <Text style={styles.statusTextGreen}>Available</Text>
-              </>
-            ) : (
-              <>
-                <Ionicons name="lock-closed" size={12} color={colors.danger} />
-                <Text style={styles.statusTextRed}>Occupied</Text>
-              </>
-            )}
-          </View>
-
-          <Text style={styles.hoursText}>Open 8 AM - 10 PM</Text>
-        </View>
-
-        {/* 5. Facilities Section (Horizontal Cards) */}
-        <View style={styles.facilitiesSection}>
-          <Text style={styles.sectionHeading}>Facilities</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.facilitiesScroll}
-          >
-            {facilities.map((fac) => (
-              <View key={fac.id} style={styles.facilityCard}>
-                {fac.qty && (
-                  <View style={styles.qtyBadge}>
-                    <Text style={styles.qtyText}>{fac.qty}</Text>
-                  </View>
-                )}
-                <Ionicons name={fac.icon as any} size={22} color={colors.navy} />
-                <Text style={styles.facilityName}>{fac.name}</Text>
+        <View style={isDesktop ? styles.desktopColumnsContainer : styles.mobileContainer}>
+          {/* LEFT COLUMN (On Desktop) / MAIN STACK (On Mobile) */}
+          <View style={isDesktop ? styles.desktopLeftCol : undefined}>
+            {/* Room Title & Host Info Row */}
+            <View style={styles.titleSection}>
+              <View style={styles.titleInfo}>
+                <Text style={styles.roomTitle}>
+                  Study Room {room.code.replace('.', ' ')}
+                </Text>
+                <View style={styles.metaRow}>
+                  <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
+                  <Text style={styles.metaText}>
+                    Tòa nhà {room.building} • Tầng {room.floor} (VKU)
+                  </Text>
+                </View>
+                <View style={styles.metaRow}>
+                  <Ionicons name="people-outline" size={14} color={colors.textSecondary} />
+                  <Text style={styles.metaText}>{room.capacity} People</Text>
+                </View>
               </View>
-            ))}
-          </ScrollView>
-        </View>
 
-        {/* 6. Date & Time Slots Selector with Conflict Engine */}
-        <DateSlotSelector
-          roomId={room.id}
-          selectedDate={selectedDate}
-          selectedSlotId={selectedSlotId}
-          onSelectDate={setSelectedDate}
-          onSelectSlot={setSelectedSlotId}
-          isSlotUnavailable={isSlotUnavailable}
-        />
+              {/* Host Avatar */}
+              <View style={styles.hostAvatarWrapper}>
+                <Image
+                  source={{ uri: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80' }}
+                  style={styles.hostAvatar}
+                />
+              </View>
+            </View>
+
+            {/* Hero Image with 1/3 page badge */}
+            <View style={[styles.carouselContainer, isDesktop && { height: 280 }]}>
+              <Image
+                source={{ uri: room.imageUrl }}
+                style={styles.carouselImage}
+                resizeMode="cover"
+              />
+              <View style={styles.pageBadge}>
+                <Text style={styles.pageBadgeText}>1/3</Text>
+              </View>
+              <View style={styles.dotsRow}>
+                <View style={[styles.dot, styles.dotActive]} />
+                <View style={styles.dot} />
+                <View style={styles.dot} />
+              </View>
+            </View>
+
+            {/* Status & Opening Hours Row */}
+            <View style={styles.statusHoursRow}>
+              <View style={styles.statusPillWrapper}>
+                {isAvailable ? (
+                  <>
+                    <View style={styles.statusDotGreen} />
+                    <Text style={styles.statusTextGreen}>Available</Text>
+                  </>
+                ) : (
+                  <>
+                    <Ionicons name="lock-closed" size={12} color={colors.danger} />
+                    <Text style={styles.statusTextRed}>Occupied</Text>
+                  </>
+                )}
+              </View>
+              <Text style={styles.hoursText}>Open 8 AM - 10 PM</Text>
+            </View>
+
+            {/* Facilities Section */}
+            <View style={styles.facilitiesSection}>
+              <Text style={styles.sectionHeading}>Facilities</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.facilitiesScroll}
+              >
+                {facilities.map((fac) => (
+                  <View key={fac.id} style={styles.facilityCard}>
+                    {fac.qty && (
+                      <View style={styles.qtyBadge}>
+                        <Text style={styles.qtyText}>{fac.qty}</Text>
+                      </View>
+                    )}
+                    <Ionicons name={fac.icon as any} size={22} color={colors.navy} />
+                    <Text style={styles.facilityName}>{fac.name}</Text>
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+
+            {/* About this room */}
+            <View style={styles.aboutSection}>
+              <Text style={styles.sectionHeading}>About this room</Text>
+              <Text style={styles.descriptionText}>{room.description}</Text>
+            </View>
+          </View>
+
+          {/* RIGHT COLUMN (On Desktop) / BOTTOM STACK (On Mobile) */}
+          <View style={isDesktop ? styles.desktopRightCol : undefined}>
+            <View style={isDesktop ? styles.bookingCardDesktop : undefined}>
+              {isDesktop && (
+                <View style={styles.bookingCardHeader}>
+                  <Text style={styles.bookingCardTitle}>Reserve this Room</Text>
+                  <Text style={styles.bookingCardSub}>VKU Free Student Booking</Text>
+                </View>
+              )}
+
+              {/* Date & Time Slots Selector with Conflict Engine */}
+              <DateSlotSelector
+                roomId={room.id}
+                selectedDate={selectedDate}
+                selectedSlotId={selectedSlotId}
+                onSelectDate={setSelectedDate}
+                onSelectSlot={setSelectedSlotId}
+                isSlotUnavailable={isSlotUnavailable}
+              />
+
+              {/* Action Buttons for Desktop View */}
+              {isDesktop && (
+                <View style={styles.desktopActionRow}>
+                  <TouchableOpacity
+                    style={styles.locationBtn}
+                    onPress={handleLocationPress}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.locationBtnText}>Location</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.continueBtn,
+                      !selectedSlotId && styles.continueBtnDisabled,
+                    ]}
+                    onPress={handleContinueBooking}
+                    activeOpacity={0.88}
+                  >
+                    <Text style={styles.continueBtnText}>Continue</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          </View>
+        </View>
       </ScrollView>
 
-      {/* 7. Sticky Bottom Action Buttons: [ Location ] and [ Continue ] */}
-      <View style={styles.stickyBottomBar}>
-        <TouchableOpacity
-          style={styles.locationBtn}
-          onPress={handleLocationPress}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.locationBtnText}>Location</Text>
-        </TouchableOpacity>
+      {/* Sticky Bottom Bar for Mobile Screen (< 900px) */}
+      {!isDesktop && (
+        <View style={styles.stickyBottomBar}>
+          <TouchableOpacity
+            style={styles.locationBtn}
+            onPress={handleLocationPress}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.locationBtnText}>Location</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[
-            styles.continueBtn,
-            !selectedSlotId && styles.continueBtnDisabled,
-          ]}
-          onPress={handleContinueBooking}
-          activeOpacity={0.88}
-        >
-          <Text style={styles.continueBtnText}>Continue</Text>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity
+            style={[
+              styles.continueBtn,
+              !selectedSlotId && styles.continueBtnDisabled,
+            ]}
+            onPress={handleContinueBooking}
+            activeOpacity={0.88}
+          >
+            <Text style={styles.continueBtnText}>Continue</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -274,27 +330,90 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  navBarWrapper: {
+    backgroundColor: '#F8FAFC',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
   navBar: {
+    maxWidth: 1200,
+    width: '100%',
+    alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
-    backgroundColor: '#F8FAFC',
   },
   navIconBtn: {
-    width: 40,
-    height: 40,
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+    height: 40,
     justifyContent: 'center',
+  },
+  backLabel: {
+    fontSize: typography.sizes.bodySm,
+    fontWeight: '600',
+    color: colors.navy,
   },
   navRightActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 8,
   },
   scrollContent: {
     paddingBottom: 110,
+  },
+  scrollContentDesktop: {
+    paddingBottom: 60,
+  },
+  mobileContainer: {
+    width: '100%',
+  },
+  desktopColumnsContainer: {
+    maxWidth: 1200,
+    width: '100%',
+    alignSelf: 'center',
+    flexDirection: 'row',
+    gap: 28,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+  },
+  desktopLeftCol: {
+    flex: 1.3,
+  },
+  desktopRightCol: {
+    flex: 1,
+  },
+  bookingCardDesktop: {
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.card,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...shadows.card,
+  },
+  bookingCardHeader: {
+    marginBottom: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    paddingBottom: spacing.sm,
+  },
+  bookingCardTitle: {
+    fontSize: typography.sizes.title,
+    fontWeight: '700',
+    color: colors.navy,
+  },
+  bookingCardSub: {
+    fontSize: typography.sizes.caption,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  desktopActionRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: spacing.lg,
   },
   titleSection: {
     flexDirection: 'row',
@@ -418,6 +537,10 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
     marginBottom: spacing.xs,
   },
+  aboutSection: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+  },
   sectionHeading: {
     fontSize: typography.sizes.bodyLg,
     fontWeight: typography.weights.bold,
@@ -461,6 +584,11 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontWeight: typography.weights.medium,
     marginTop: 6,
+  },
+  descriptionText: {
+    fontSize: typography.sizes.bodySm,
+    color: colors.textSecondary,
+    lineHeight: 22,
   },
   stickyBottomBar: {
     position: 'absolute',
