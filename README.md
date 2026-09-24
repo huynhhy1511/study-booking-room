@@ -7,10 +7,6 @@
 ## 📌 Giới thiệu tổng quan
 Dự án được xây dựng phục vụ học phần **Lập trình Đa nền tảng (Cross-Platform Mobile App Development)**. Ứng dụng giải quyết bài toán đặt phòng tự học, phòng lab, hội thảo nhóm tại các tòa A, B, C, V thuộc khuôn viên VKU với kiến trúc ngoại tuyến (Offline-First), phát hiện xung đột lịch tức thì và tự động phát hành thẻ thông hành mã QR điện tử.
 
-* **Sinh viên thực hiện:** Huỳnh Ngọc Huy
-* **Mã sinh viên:** 23IT.EB043
-* **Repository:** [https://github.com/huynhhy1511/study-booking-room](https://github.com/huynhhy1511/study-booking-room)
-
 ---
 
 ## 🚀 Các tính năng nổi bật
