@@ -7,6 +7,8 @@ import {
   StyleSheet,
   SafeAreaView,
   Alert,
+  Modal,
+  ActivityIndicator,
   useWindowDimensions,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -30,6 +32,9 @@ export const MyReservationsScreen: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
   const [selectedBookingForQR, setSelectedBookingForQR] = useState<Booking | null>(null);
+  const [bookingToCancel, setBookingToCancel] = useState<Booking | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const displayedReservations = useMemo(() => {
     return reservations.filter((b) =>
@@ -38,25 +43,27 @@ export const MyReservationsScreen: React.FC = () => {
   }, [reservations, activeTab]);
 
   const handleCancelPress = (booking: Booking) => {
-    Alert.alert(
-      'Cancel Booking',
-      `Are you sure you want to cancel your reservation for room ${booking.roomCode} on ${booking.date} (${booking.slotLabel})?\n\nThis time slot will be immediately freed for other students.`,
-      [
-        { text: 'Keep Booking', style: 'cancel' },
-        {
-          text: 'Yes, Cancel',
-          style: 'destructive',
-          onPress: async () => {
-            const result = await cancelBooking(booking.id);
-            if (result.success) {
-              Alert.alert('Booking Cancelled', 'Your reservation has been cancelled and the slot is now freed.');
-            } else {
-              Alert.alert('Error', result.error || 'Failed to cancel reservation.');
-            }
-          },
-        },
-      ]
-    );
+    setBookingToCancel(booking);
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!bookingToCancel) return;
+    setIsCancelling(true);
+    try {
+      const res = await cancelBooking(bookingToCancel.id);
+      if (res.success) {
+        const code = bookingToCancel.roomCode;
+        setBookingToCancel(null);
+        setToastMessage(`Đã hủy đặt phòng ${code} thành công! Khung giờ đã được giải phóng.`);
+        setTimeout(() => setToastMessage(null), 4500);
+      } else {
+        Alert.alert('Không thể hủy', res.error || 'Có lỗi xảy ra.');
+      }
+    } catch (e: any) {
+      Alert.alert('Lỗi', e?.message || 'Không thể hủy lúc này.');
+    } finally {
+      setIsCancelling(false);
+    }
   };
 
   const renderBookingItem = ({ item }: { item: Booking }) => {
@@ -208,12 +215,103 @@ export const MyReservationsScreen: React.FC = () => {
         />
       </View>
 
+      {/* Toast Notification Banner */}
+      {toastMessage && (
+        <View style={styles.toastBanner}>
+          <View style={styles.toastLeft}>
+            <Ionicons name="checkmark-circle" size={20} color="#16A34A" />
+            <Text style={styles.toastText}>{toastMessage}</Text>
+          </View>
+          <TouchableOpacity onPress={() => setToastMessage(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="close" size={18} color="#166534" />
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* QR Pass Modal */}
       <QRPassModal
         visible={!!selectedBookingForQR}
         booking={selectedBookingForQR}
         onClose={() => setSelectedBookingForQR(null)}
       />
+
+      {/* Custom Cross-Platform Cancellation Dialog Modal */}
+      <Modal
+        visible={!!bookingToCancel}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setBookingToCancel(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.cancelModalCard}>
+            <View style={styles.cancelIconBox}>
+              <Ionicons name="trash-outline" size={28} color={colors.danger} />
+            </View>
+
+            <Text style={styles.cancelModalTitle}>Xác nhận hủy đặt phòng</Text>
+
+            <Text style={styles.cancelModalDesc}>
+              Bạn có chắc chắn muốn hủy lịch hẹn tại{' '}
+              <Text style={styles.boldNavyText}>
+                {bookingToCancel?.roomCode} - {bookingToCancel?.roomName}
+              </Text>?
+            </Text>
+
+            {bookingToCancel && (
+              <View style={styles.bookingDetailsBox}>
+                <View style={styles.detailRow}>
+                  <Ionicons name="calendar-outline" size={15} color={colors.navy} />
+                  <Text style={styles.detailText}>{formatDateDisplay(bookingToCancel.date)}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Ionicons name="time-outline" size={15} color={colors.navy} />
+                  <Text style={styles.detailText}>{bookingToCancel.slotLabel}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Ionicons name="location-outline" size={15} color={colors.navy} />
+                  <Text style={styles.detailText}>
+                    Tòa {bookingToCancel.building}, Tầng {bookingToCancel.floor} (VKU)
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            <View style={styles.cancelNoticeBox}>
+              <Ionicons name="alert-circle-outline" size={16} color="#D97706" />
+              <Text style={styles.cancelNoticeText}>
+                Khung giờ này sẽ ngay lập tức được giải phóng trên hệ thống thời gian thực để sinh viên khác có thể đăng ký.
+              </Text>
+            </View>
+
+            <View style={styles.cancelModalActions}>
+              <TouchableOpacity
+                style={styles.keepBtn}
+                onPress={() => setBookingToCancel(null)}
+                disabled={isCancelling}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.keepBtnText}>Giữ lại lịch</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.confirmCancelBtn, isCancelling && { opacity: 0.7 }]}
+                onPress={handleConfirmCancel}
+                disabled={isCancelling}
+                activeOpacity={0.88}
+              >
+                {isCancelling ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Ionicons name="trash-outline" size={16} color="#FFFFFF" />
+                    <Text style={styles.confirmCancelBtnText}>Xác nhận hủy</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -413,5 +511,158 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.bodySm,
     fontWeight: typography.weights.bold,
     color: colors.danger,
+  },
+  // Toast Notification
+  toastBanner: {
+    position: 'absolute',
+    bottom: 24,
+    left: 20,
+    right: 20,
+    maxWidth: 560,
+    alignSelf: 'center',
+    backgroundColor: '#DCFCE7',
+    borderWidth: 1,
+    borderColor: '#86EFAC',
+    borderRadius: borderRadius.card,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    ...shadows.card,
+    zIndex: 9999,
+  },
+  toastLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+    marginRight: 10,
+  },
+  toastText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#15803D',
+    flex: 1,
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  cancelModalCard: {
+    width: '100%',
+    maxWidth: 440,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    ...shadows.modal,
+  },
+  cancelIconBox: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.dangerLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.dangerBorder,
+  },
+  cancelModalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: colors.navy,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  cancelModalDesc: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  boldNavyText: {
+    fontWeight: '700',
+    color: colors.navy,
+  },
+  bookingDetailsBox: {
+    width: '100%',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 12,
+    gap: 8,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  detailText: {
+    fontSize: 13,
+    color: colors.text,
+    fontWeight: '500',
+  },
+  cancelNoticeBox: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: '#FEF3C7',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    marginBottom: 20,
+  },
+  cancelNoticeText: {
+    fontSize: 12,
+    color: '#92400E',
+    flex: 1,
+    lineHeight: 17,
+  },
+  cancelModalActions: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: 12,
+  },
+  keepBtn: {
+    flex: 1,
+    height: 46,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F8FAFC',
+  },
+  keepBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  confirmCancelBtn: {
+    flex: 1.2,
+    height: 46,
+    borderRadius: 10,
+    backgroundColor: colors.danger,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    ...shadows.subtle,
+  },
+  confirmCancelBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });
