@@ -8,9 +8,9 @@
 
 ## 1. GENERAL INFORMATION & DELIVERABLE LINKS
 * **Team Members:**
-  - Huỳnh Ngọc Huy — Student ID: 23IT.EB043
-* **🔗 Live Demo URL:** http://localhost:8081
-* **💻 GitHub Repository:** https://github.com/huynhhy1511/study-booking-room
+  - **Huỳnh Ngọc Huy** — Student ID: **23IT.EB043** 
+* **🔗 Live Demo URL:** [http://localhost:8081](http://localhost:8081) (Expo Web Platform) / Expo Go (Android Emulator & Physical Device)
+* **💻 GitHub Repository:**https://github.com/huynhhy1511/study-booking-room
 * **🎥 Video Demo (Optional):** [N/A]
 
 ---
@@ -19,8 +19,8 @@
 
 | # | Required Feature | Status | Implementation Details & Acceptance Level |
 |:---:|---|:---:|---|
-| 1 | Cross-Platform UI | ✅ Complete | Giao diện tự thích ứng giữa Web máy tính và Mobile Native |
-| 2 | Conflict Prevention | ✅ Complete | Tự động khóa slot khi đã có sinh viên khác đặt |
+| 1 | Cross-Platform UI | ✅ Complete | Tự thích ứng giữa Web máy tính và Mobile Native |
+| 2 | Conflict Prevention | ✅ Complete | Tự động khóa slot khi đã có người đặt |
 | 3 | Local State Persistence | ✅ Complete | Lưu trữ toàn bộ dữ liệu ngoại tuyến với Zustand và AsyncStorage |
 | 4 | Discrete Time Slots | ✅ Complete | Đặt phòng theo 4 ca cố định 2 tiếng trong vòng 7 ngày |
 | 5 | Digital QR Pass | ✅ Complete | Tạo mã đặt phòng và mã QR check-in phòng học |
@@ -74,7 +74,7 @@ miniproject2/
 ```
 
 ### 3.2 State Management Flow
-Ứng dụng sử dụng Zustand kết hợp AsyncStorage để quản lý trạng thái tập trung và lưu trữ ngoại tuyến. Khi người dùng thực hiện thao tác đặt hoặc hủy phòng, store sẽ cập nhật dữ liệu và đồng bộ tức thì lên giao diện mà không cần tải lại trang.
+Ứng dụng sử dụng Zustand kết hợp AsyncStorage để quản lý trạng thái tập trung và lưu trữ ngoại tuyến. Mọi thao tác đặt hoặc hủy phòng đều được cập nhật và đồng bộ tức thì lên giao diện.
 
 ---
 
@@ -86,8 +86,6 @@ Home Screen – Room list, search, and filters.
 Room Detail – Room information, 7-day selector, and available/booked time slots.
 Booking Success – Confirmed booking with booking ID and QR pass.
 My Reservations – Active reservations and cancellation functionality.
-
----
 
 ## 5. TECHNICAL CHALLENGES & RESOLUTIONS
 
