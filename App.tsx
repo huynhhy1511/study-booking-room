@@ -4,10 +4,14 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { requestNotificationPermission } from './src/services/notificationService';
+import { useBookingStore } from './src/store/useBookingStore';
 
 export default function App() {
   useEffect(() => {
-    // Xin quyền thông báo
+    // 1. Khởi tạo đồng bộ Supabase Backend & WebSocket Realtime
+    useBookingStore.getState().initSync();
+
+    // 2. Xin quyền thông báo
     requestNotificationPermission().catch((err) => {
       console.log('Permission init notice:', err);
     });

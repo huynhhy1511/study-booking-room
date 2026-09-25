@@ -7,17 +7,29 @@ import { DEFAULT_USER, TIME_SLOTS } from '../constants';
 import { generateBookingId, generateQrToken } from '../utils/idGenerator';
 import { isSlotConflict } from '../utils/conflict';
 import { cancelBookingReminder, scheduleBookingReminder } from '../services/notificationService';
+import {
+  cancelBookingInSupabase,
+  fetchBookingsFromSupabase,
+  fetchRoomsFromSupabase,
+  insertBookingToSupabase,
+  isSupabaseConfigured,
+  subscribeToBookingsRealtime,
+} from '../services/supabase';
 
 interface BookingStoreState {
   // Session
   user: UserSession;
   setUser: (user: Partial<UserSession>) => void;
 
-  // Rooms Data (Local)
+  // Rooms Data
   rooms: Room[];
 
   // Reservations
   reservations: Booking[];
+
+  // Supabase Sync status
+  isOnline: boolean;
+  initSync: () => Promise<void>;
 
   // Active Filters
   filters: FilterState;
@@ -34,7 +46,12 @@ interface BookingStoreState {
   setSelectedSlotId: (slotId: string | null) => void;
 
   // Core Booking Actions
-  createBooking: (roomId: string, date: string, slotId: string, notes?: string) => Promise<{ success: boolean; booking?: Booking; error?: string }>;
+  createBooking: (
+    roomId: string,
+    date: string,
+    slotId: string,
+    notes?: string
+  ) => Promise<{ success: boolean; booking?: Booking; error?: string }>;
   cancelBooking: (bookingId: string) => Promise<{ success: boolean; error?: string }>;
 
   // Helper selectors
@@ -57,7 +74,6 @@ const initialFilters: FilterState = {
   equipment: [],
 };
 
-// Dữ liệu mẫu khởi tạo ban đầu để demo tính năng Conflict Engine ngay từ lần đầu mở app
 const getInitialSeedBookings = (): Booking[] => {
   const today = getTodayDateString();
   return [
@@ -86,7 +102,7 @@ const getInitialSeedBookings = (): Booking[] => {
       id: 'VKU-SEED-02',
       roomId: 'room-b-201',
       roomName: 'Lab AI & Trí Tuệ Nhân Tạo B.201',
-      code: 'B.201',
+      roomCode: 'B.201',
       building: 'B',
       floor: 2,
       date: today,
@@ -101,10 +117,12 @@ const getInitialSeedBookings = (): Booking[] => {
       createdAt: new Date().toISOString(),
       status: 'confirmed',
       qrToken: JSON.stringify({ app: 'VKU-STUDY-BOOKING', bookingId: 'VKU-SEED-02', roomId: 'room-b-201' }),
-      notes: 'Thực hành mô hình transformer',
-    } as any,
+      notes: 'Luyện thi đồ án tốt nghiệp',
+    },
   ];
 };
+
+let realtimeChannelSubscribed = false;
 
 export const useBookingStore = create<BookingStoreState>()(
   persist(
@@ -115,6 +133,67 @@ export const useBookingStore = create<BookingStoreState>()(
 
       rooms: SAMPLE_ROOMS,
       reservations: getInitialSeedBookings(),
+      isOnline: false,
+
+      // Khởi tạo đồng bộ Supabase Backend & Lắng nghe WebSocket Realtime
+      initSync: async () => {
+        if (!isSupabaseConfigured()) {
+          console.log('ℹ️ Supabase not configured in .env. Running in Offline-First Local Mode.');
+          return;
+        }
+
+        try {
+          // 1. Tải danh sách phòng từ Supabase Database
+          const remoteRooms = await fetchRoomsFromSupabase();
+          if (remoteRooms && remoteRooms.length > 0) {
+            set({ rooms: remoteRooms });
+          }
+
+          // 2. Tải danh sách các lượt đặt phòng từ Supabase Database
+          const remoteBookings = await fetchBookingsFromSupabase();
+          if (remoteBookings && remoteBookings.length > 0) {
+            // Hợp nhất dữ liệu không trùng lặp
+            set((state) => {
+              const existingIds = new Set(remoteBookings.map((b) => b.id));
+              const localOnly = state.reservations.filter((b) => !existingIds.has(b.id));
+              return {
+                reservations: [...remoteBookings, ...localOnly],
+                isOnline: true,
+              };
+            });
+          } else {
+            set({ isOnline: true });
+          }
+
+          // 3. Đăng ký WebSocket Realtime (chỉ đăng ký 1 lần duy nhất)
+          if (!realtimeChannelSubscribed) {
+            realtimeChannelSubscribed = true;
+            subscribeToBookingsRealtime(({ eventType, newBooking, oldId }) => {
+              console.log(`⚡ [Supabase Realtime] Event: ${eventType}`, newBooking?.id || oldId);
+
+              if (eventType === 'INSERT' && newBooking) {
+                set((state) => {
+                  const exists = state.reservations.some((b) => b.id === newBooking.id);
+                  if (exists) return state;
+                  return { reservations: [newBooking, ...state.reservations] };
+                });
+              } else if (eventType === 'UPDATE' && newBooking) {
+                set((state) => ({
+                  reservations: state.reservations.map((b) =>
+                    b.id === newBooking.id ? newBooking : b
+                  ),
+                }));
+              } else if (eventType === 'DELETE' && oldId) {
+                set((state) => ({
+                  reservations: state.reservations.filter((b) => b.id !== oldId),
+                }));
+              }
+            });
+          }
+        } catch (error) {
+          console.warn('Supabase initSync error:', error);
+        }
+      },
 
       filters: initialFilters,
       setSearchQuery: (query) =>
@@ -148,7 +227,7 @@ export const useBookingStore = create<BookingStoreState>()(
       createBooking: async (roomId, date, slotId, notes) => {
         const { rooms, reservations, user } = get();
 
-        // 1. Kiểm tra conflict
+        // 1. Kiểm tra conflict ở máy khách
         if (isSlotConflict(reservations, roomId, date, slotId)) {
           return {
             success: false,
@@ -201,7 +280,16 @@ export const useBookingStore = create<BookingStoreState>()(
           console.warn('Could not schedule notification:', e);
         }
 
-        // 3. Cập nhật state (tức thì, real-time shared state)
+        // 3. Đẩy lên Supabase Database (với kiểm tra ràng buộc duy nhất chống conflict ở DB)
+        const dbResult = await insertBookingToSupabase(newBooking);
+        if (!dbResult.success) {
+          return {
+            success: false,
+            error: dbResult.error || 'Lỗi khi lưu đặt phòng vào cơ sở dữ liệu!',
+          };
+        }
+
+        // 4. Cập nhật state cục bộ
         set((state) => ({
           reservations: [newBooking, ...state.reservations],
           selectedSlotId: null, // Reset selection sau khi đặt xong
@@ -221,12 +309,18 @@ export const useBookingStore = create<BookingStoreState>()(
           return { success: false, error: 'Không tìm thấy thông tin đặt phòng!' };
         }
 
-        // 1. Hủy notification đã lập lịch
+        // 1. Cập nhật trạng thái hủy trên Supabase
+        const dbResult = await cancelBookingInSupabase(bookingId);
+        if (!dbResult.success) {
+          console.warn('Supabase cancel update failed:', dbResult.error);
+        }
+
+        // 2. Hủy notification đã lập lịch
         if (booking.notificationId) {
           await cancelBookingReminder(booking.notificationId);
         }
 
-        // 2. Cập nhật trạng thái sang cancelled (hoặc giải phóng slot)
+        // 3. Cập nhật trạng thái sang cancelled cục bộ
         set((state) => ({
           reservations: state.reservations.map((b) =>
             b.id === bookingId ? { ...b, status: 'cancelled' } : b

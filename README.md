@@ -34,12 +34,15 @@ Dự án được xây dựng phục vụ học phần **Lập trình Đa nền 
 * Mỗi lượt đặt phòng thành công được cấp mã đặt phòng độc nhất dạng `VKU-XXXXXX`.
 * Mã QR vector độ nét cao (`react-native-qrcode-svg`) chứa thông tin xác thực ngoại tuyến để bảo vệ / quản lý phòng kiểm tra khi sinh viên check-in.
 
-### 5. Lưu trữ ngoại tuyến (Local Offline-First)
-* Sử dụng **Zustand** kết hợp **AsyncStorage** (`persist` middleware). Toàn bộ danh sách 16 phòng, lịch đặt phòng, thông tin cá nhân và bộ lọc đều được lưu trữ trực tiếp trên thiết bị, khởi động lại app không bị mất dữ liệu.
+### 5. Backend Cloud & Cơ sở dữ liệu thời gian thực (Supabase & PostgreSQL)
+* **Backend as a Service (BaaS):** Sử dụng **Supabase** với cơ sở dữ liệu quan hệ **PostgreSQL**.
+* **Đồng bộ thời gian thực (Realtime WebSocket):** Khi một sinh viên đặt hoặc hủy phòng trên thiết bị bất kỳ, toàn bộ các máy khác (Web, Android, iOS) sẽ tự động cập nhật trạng thái phòng ngay lập tức mà không cần tải lại trang.
+* **Toàn vẹn dữ liệu (Unique Constraint):** Chặn triệt để tình trạng xung đột đặt trùng slot từ cấp Database với chỉ mục `unique_active_room_slot` (`room_id`, `date`, `slot_id`).
+* **Lưu trữ ngoại tuyến (Offline-First):** Tích hợp **Zustand** kết hợp **AsyncStorage**. Khi mất kết nối mạng hoặc chưa cấu hình DB, ứng dụng vẫn hoạt động mượt mà với bộ nhớ đệm cục bộ trên máy.
 
 ### 6. Quản lý đặt phòng & Hủy lịch an toàn
 * Phân loại tab `Upcoming` (Sắp diễn ra) và `Past` (Lịch sử / Đã hủy).
-* Hộp thoại Modal xác nhận hủy phòng hoạt động mượt mà trên cả Web và Android, ngay lập tức giải phóng khung giờ cho các sinh viên khác.
+* Hộp thoại Modal xác nhận hủy phòng hoạt động mượt mà trên cả Web và Android, ngay lập tức giải phóng khung giờ cho các sinh viên khác trên toàn hệ thống Database.
 
 ### 7. Quản lý thông tin sinh viên (Profile Management)
 * Cho phép chỉnh sửa trực tiếp: Họ và tên, Mã số sinh viên (MSSV), Email VKU, Khoa/Ngành đào tạo và ảnh đại diện.
@@ -54,6 +57,8 @@ Dự án được xây dựng phục vụ học phần **Lập trình Đa nền 
 | **React Native** | `0.86.3` | Nền tảng phát triển ứng dụng di động đa nền tảng |
 | **Expo SDK** | `~57.0.24` | Bộ công cụ và môi trường phát triển ứng dụng |
 | **TypeScript** | `~6.0.3` | Đảm bảo tính chặt chẽ về kiểu dữ liệu (Type Safety) |
+| **Supabase (Backend)** | `@supabase/supabase-js` | Nền tảng Backend đám mây, API và WebSocket Realtime |
+| **PostgreSQL (Database)** | `v15+` | Cơ sở dữ liệu quan hệ lưu trữ phòng học và lịch đặt |
 | **Zustand** | `^5.0.15` | Quản lý trạng thái toàn cục (State Management) |
 | **AsyncStorage** | `2.2.0` | Lưu trữ dữ liệu cục bộ ngoại tuyến trên thiết bị |
 | **React Navigation** | `^7.x` | Điều hướng màn hình (Native Stack & Bottom Tabs) |
@@ -67,20 +72,21 @@ Dự án được xây dựng phục vụ học phần **Lập trình Đa nền 
 ```
 miniproject2/
 ├── assets/                       # Ảnh tĩnh, icon, screenshots minh chứng
-│   ├── icon.png
-│   ├── favicon.png
-│   └── screenshots/
 ├── src/
 │   ├── components/               # Các component tái sử dụng (RoomCard, Header, QR...)
 │   ├── constants/                # Hằng số (tòa nhà, thiết bị, khung giờ, user mặc định)
 │   ├── data/                     # Dữ liệu 16 phòng học tòa A, B, C, V
 │   ├── navigation/               # Bộ điều hướng AppNavigator
 │   ├── screens/                  # Các màn hình chính (Home, Detail, Confirm, Profile...)
-│   ├── services/                 # Xử lý thông báo (NotificationService)
-│   ├── store/                    # Zustand store (useBookingStore)
+│   ├── services/                 # NotificationService & Supabase Realtime Client
+│   │   ├── notificationService.ts
+│   │   └── supabase.ts
+│   ├── store/                    # Zustand store (useBookingStore) kết nối Supabase
 │   ├── theme/                    # Bảng màu VKU, typography, khoảng cách
 │   ├── types/                    # Định nghĩa Interface TypeScript
 │   └── utils/                    # Xử lý conflict lịch, định dạng ngày giờ, tạo mã
+├── .env.example                  # File mẫu khai báo biến môi trường Supabase
+├── supabase_schema.sql           # Script khởi tạo Database PostgreSQL & Realtime
 ├── App.tsx                       # Entry component chính của ứng dụng
 ├── app.json                      # Cấu hình dự án Expo SDK 57
 ├── eas.json                      # Cấu hình đóng gói build file APK Android
@@ -101,12 +107,22 @@ Mở terminal tại thư mục dự án và chạy:
 npm install
 ```
 
-### 3. Khởi chạy ứng dụng (Development Server)
+### 3. Cấu hình Backend & Database (Supabase)
+1. Tạo một project miễn phí tại [Supabase](https://supabase.com).
+2. Vào **SQL Editor** trên Supabase, copy toàn bộ nội dung file [supabase_schema.sql](file:///d:/Nam4ki1/danentang/miniproject2/supabase_schema.sql) dán vào và bấm **Run** để khởi tạo các bảng và dữ liệu 16 phòng học VKU.
+3. Tạo file `.env` tại thư mục gốc dự án (tham khảo file [.env.example](file:///d:/Nam4ki1/danentang/miniproject2/.env.example)) và điền thông tin:
+```env
+EXPO_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-public-key
+```
+*(Nếu chưa cấu hình Supabase, app sẽ tự động chuyển sang chế độ Offline-First lưu trữ cục bộ qua AsyncStorage mà không bị lỗi crash).*
+
+### 4. Khởi chạy ứng dụng (Development Server)
 ```bash
 npx expo start
 ```
 
-### 4. Chạy trên các nền tảng:
+### 5. Chạy trên các nền tảng:
 * **Chạy trên Trình duyệt Web:**
   - Bấm phím `w` trên terminal, hoặc mở trình duyệt truy cập: `http://localhost:8081` (hoặc `http://localhost:8082`).
 * **Chạy trên Máy ảo Android (Android Studio):**

@@ -21,7 +21,7 @@
 |:---:|---|:---:|---|
 | 1 | Cross-Platform UI | ✅ Complete | Tự thích ứng giữa Web máy tính và Mobile Native |
 | 2 | Conflict Prevention | ✅ Complete | Tự động khóa slot khi đã có người đặt |
-| 3 | Local State Persistence | ✅ Complete | Lưu trữ toàn bộ dữ liệu ngoại tuyến với Zustand và AsyncStorage |
+| 3 | Backend Database Sync | ✅ Complete | Đồng bộ thời gian thực qua Supabase PostgreSQL và lưu ngoại tuyến |
 | 4 | Discrete Time Slots | ✅ Complete | Đặt phòng theo 4 ca cố định 2 tiếng trong vòng 7 ngày |
 | 5 | Digital QR Pass | ✅ Complete | Tạo mã đặt phòng và mã QR check-in phòng học |
 | 6 | Local Notification | ✅ Complete | Thông báo nhắc nhở trước giờ nhận phòng 15 phút |
@@ -62,11 +62,15 @@ miniproject2/
 │   │   ├── NotificationsScreen.tsx       # Notification center tab
 │   │   ├── ProfileScreen.tsx             # Profile editor & student credentials
 │   │   └── OnboardingScreen.tsx          # Campus intro & feature overview
-│   ├── services/                 # NotificationService (local 15-min scheduler)
-│   ├── store/                    # Zustand useBookingStore with AsyncStorage
+│   ├── services/                 # NotificationService & Supabase Realtime Client
+│   │   ├── notificationService.ts
+│   │   └── supabase.ts
+│   ├── store/                    # Zustand useBookingStore with Supabase & AsyncStorage
 │   ├── theme/                    # Color tokens, typography, radii, elevation shadows
 │   ├── types/                    # Strict TypeScript interfaces (Room, Booking, etc.)
 │   └── utils/                    # Conflict engine, date parsers, unique ID generators
+├── .env.example                  # Template biến môi trường Supabase
+├── supabase_schema.sql           # Script khởi tạo Database PostgreSQL & Realtime
 ├── App.tsx                       # Root container with SafeAreaProvider & Web CSS fixes
 ├── app.json                      # Expo SDK 57 manifest & package configuration
 ├── eas.json                      # Cloud build configuration (preview APK & production)
@@ -74,7 +78,7 @@ miniproject2/
 ```
 
 ### 3.2 State Management Flow
-Ứng dụng sử dụng Zustand kết hợp AsyncStorage để quản lý trạng thái tập trung và lưu trữ ngoại tuyến. Mọi thao tác đặt hoặc hủy phòng đều được cập nhật và đồng bộ tức thì lên giao diện.
+Ứng dụng kết hợp Zustand, AsyncStorage và Supabase Realtime để đồng bộ dữ liệu thời gian thực giữa các thiết bị. Mọi thao tác đặt phòng hoặc hủy lịch được xử lý qua PostgreSQL và cập nhật tức thì qua WebSocket.
 
 ---
 
